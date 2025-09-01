@@ -3690,10 +3690,13 @@ XSelectionEvent *pEv;
 static void *xmalloc(size)
 size_t size;
 {
-  void * ptr = malloc(size);
+  /* calloc() zeroes the requested memory in an optimized manner,
+   * avoiding an explicit memset() call after malloc().  This reduces
+   * overhead for allocations that require cleared memory. */
+  void *ptr = calloc(1, size);
   if (!ptr) {
     fprintf(stderr, "%s - error: %s\n", programStr, strerror(errno));
     exit(1);
   }
-  return memset(ptr, 0, size);
+  return ptr;
 }
