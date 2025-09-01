@@ -492,7 +492,7 @@ char **argv;
     } /* END if */
     sleep(10);
   } /* END while fromDpy */
-  (void)XSynchronize(fromDpy, True);
+  (void)XSync(fromDpy, False);
 
   /* toDpy is always the first shadow */
   pShadow = (PSHADOW)xmalloc(sizeof(SHADOW));
@@ -509,7 +509,7 @@ char **argv;
     if (!(pShadow->dpy = OpenAndCheckDisplay(pShadow->name)))
       exit(3);
   }
-  (void)XSynchronize(shadows->dpy, True);
+  (void)XSync(shadows->dpy, False);
 
 #ifndef WIN_2_X
   /* set error handler,
