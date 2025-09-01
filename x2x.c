@@ -322,6 +322,7 @@ static void    FakeAction(PDPYINFO, int, KeySym, Bool);
 static void    RefreshPointerMapping(Display *, PDPYINFO);
 static void    Usage();
 static void    *xmalloc(size_t);
+static KeyCode KeysymToKeycodeCached(Display *, KeySym);
 
 
 
@@ -1601,14 +1602,14 @@ static void KeyboardState(Display *dpy)
     pShadow->led_mask = shState.led_mask;
 
     if ((toState.led_mask & 1) != (shState.led_mask & 1) &&
-	(keycode = XKeysymToKeycode(pShadow->dpy, XK_Caps_Lock))) {
+        (keycode = KeysymToKeycodeCached(pShadow->dpy, XK_Caps_Lock))) {
       XTestFakeKeyEvent(pShadow->dpy, keycode, True, 0);
       XTestFakeKeyEvent(pShadow->dpy, keycode, False, 0);
       pShadow->flush = True;
     }
 
     if ((toState.led_mask & 2) != (shState.led_mask & 2) &&
-	(keycode = XKeysymToKeycode(pShadow->dpy, XK_Num_Lock))) {
+        (keycode = KeysymToKeycodeCached(pShadow->dpy, XK_Num_Lock))) {
       XTestFakeKeyEvent(pShadow->dpy, keycode, True, 0);
       XTestFakeKeyEvent(pShadow->dpy, keycode, False, 0);
       pShadow->flush = True;
@@ -1639,14 +1640,14 @@ static void RestoreKeyboardState(void)
       continue;
 
     if ((pShadow->led_mask & 1) != (shState.led_mask & 1) &&
-	(keycode = XKeysymToKeycode(pShadow->dpy, XK_Caps_Lock))) {
+        (keycode = KeysymToKeycodeCached(pShadow->dpy, XK_Caps_Lock))) {
       XTestFakeKeyEvent(pShadow->dpy, keycode, True, 0);
       XTestFakeKeyEvent(pShadow->dpy, keycode, False, 0);
       pShadow->flush = True;
     }
 
     if ((pShadow->led_mask & 2) != (shState.led_mask & 2) &&
-	(keycode = XKeysymToKeycode(pShadow->dpy, XK_Num_Lock))) {
+        (keycode = KeysymToKeycodeCached(pShadow->dpy, XK_Num_Lock))) {
       XTestFakeKeyEvent(pShadow->dpy, keycode, True, 0);
       XTestFakeKeyEvent(pShadow->dpy, keycode, False, 0);
       pShadow->flush = True;
@@ -2082,7 +2083,7 @@ XButtonEvent *pEv;
              (keysym = buttonmap[pEv->button][eventno]) != NoSymbol;
              eventno++)
         {
-          if ((keycode = XKeysymToKeycode(pShadow->dpy, keysym))) {
+          if ((keycode = KeysymToKeycodeCached(pShadow->dpy, keysym))) {
             XTestFakeKeyEvent(pShadow->dpy, keycode, True, 0);
             XTestFakeKeyEvent(pShadow->dpy, keycode, False, 0);
             XFlush(pShadow->dpy);
@@ -2235,8 +2236,8 @@ XKeyEvent *pEv;
 
   if (pSticky) {
     for (pShadow = shadows; pShadow; pShadow = pShadow->pNext) {
-      toShiftCode = XKeysymToKeycode(pShadow->dpy, XK_Shift_L);
-      if ((keycode = XKeysymToKeycode(pShadow->dpy, keysym))) {
+      toShiftCode = KeysymToKeycodeCached(pShadow->dpy, XK_Shift_L);
+      if ((keycode = KeysymToKeycodeCached(pShadow->dpy, keysym))) {
         if(DoFakeShift) XTestFakeKeyEvent(pShadow->dpy, toShiftCode, True, 0);
         XTestFakeKeyEvent(pShadow->dpy, keycode, True, 0);
         XTestFakeKeyEvent(pShadow->dpy, keycode, False, 0);
@@ -2248,8 +2249,8 @@ XKeyEvent *pEv;
   } else {
     Bool invert = (pEv->state & 0x2) && (pEv->state & 0x1);
     for (pShadow = shadows; pShadow; pShadow = pShadow->pNext) {
-      toShiftCode = XKeysymToKeycode(pShadow->dpy, XK_Shift_L);
-      if ((keycode = XKeysymToKeycode(pShadow->dpy, keysym))) {
+      toShiftCode = KeysymToKeycodeCached(pShadow->dpy, XK_Shift_L);
+      if ((keycode = KeysymToKeycodeCached(pShadow->dpy, keysym))) {
 	if (invert && toShiftCode)
 	  XTestFakeKeyEvent(pShadow->dpy, toShiftCode, True, 0);
 	XTestFakeKeyEvent(pShadow->dpy, keycode, bPress, 0);
@@ -2557,7 +2558,7 @@ Bool bDown;
   PFAKE pFake;
 
   if (type == FAKE_KEY)
-     code = XKeysymToKeycode(fromDpy, thing);
+     code = KeysymToKeycodeCached(fromDpy, thing);
   else
      code = thing;
 
@@ -2601,7 +2602,7 @@ PDPYINFO pDpyInfo;
       /* send up to all shadows */
       for (pShadow = shadows; pShadow; pShadow = pShadow->pNext) {
         if (type == FAKE_KEY) { /* key goes up */
-          if ((keycode = XKeysymToKeycode(pShadow->dpy, pFake->thing))) {
+          if ((keycode = KeysymToKeycodeCached(pShadow->dpy, pFake->thing))) {
             XTestFakeKeyEvent(pShadow->dpy, keycode, False, 0);
 	    pShadow->flush = True;
             debug("key 0x%lx up\n", (unsigned long)pFake->thing);
@@ -3491,7 +3492,7 @@ void SendKeyEvent(PDPYINFO pDpyInfo, KeySym keysym, int down,
   int invShift;
 
   for (pShadow = shadows; pShadow; pShadow = pShadow->pNext) {
-    if ((keycode = XKeysymToKeycode(pShadow->dpy, keysym))) {
+    if ((keycode = KeysymToKeycodeCached(pShadow->dpy, keysym))) {
       invShift = 0;
       if (chkShift && (keysym != XK_Shift_R) && (keysym != XK_Shift_L)) {
         /* Check that the shift key matches where the keysym is */
@@ -3515,9 +3516,9 @@ void SendKeyEvent(PDPYINFO pDpyInfo, KeySym keysym, int down,
       /* USING_RSHIFT  */
 
       if (invShift) {
-        KeyCode toShiftLCode = XKeysymToKeycode(pShadow->dpy, XK_Shift_L);
+        KeyCode toShiftLCode = KeysymToKeycodeCached(pShadow->dpy, XK_Shift_L);
 #ifdef USING_RSHIFT
-        KeyCode toShiftRCode = XKeysymToKeycode(pShadow->dpy, XK_Shift_R);
+        KeyCode toShiftRCode = KeysymToKeycodeCached(pShadow->dpy, XK_Shift_R);
 #endif
         /* XXX mdh - Would it be better to only mess with shifts on down */
         /* XXX mdh - and only restore on up? */
@@ -3696,4 +3697,32 @@ size_t size;
     exit(1);
   }
   return memset(ptr, 0, size);
+}
+
+typedef struct {
+  Display *dpy;
+  KeySym keysym;
+  KeyCode keycode;
+} KEYCODE_CACHE_ENTRY;
+
+#define KEYCODE_CACHE_SIZE 256
+
+static KeyCode KeysymToKeycodeCached(Display *dpy, KeySym ks)
+{
+  static KEYCODE_CACHE_ENTRY cache[KEYCODE_CACHE_SIZE];
+  static int count = 0;
+  static int next = 0;
+  int i;
+  for (i = 0; i < count; ++i) {
+    if (cache[i].dpy == dpy && cache[i].keysym == ks)
+      return cache[i].keycode;
+  }
+  KeyCode code = XKeysymToKeycode(dpy, ks);
+  cache[next].dpy = dpy;
+  cache[next].keysym = ks;
+  cache[next].keycode = code;
+  if (count < KEYCODE_CACHE_SIZE)
+    count++;
+  next = (next + 1) % KEYCODE_CACHE_SIZE;
+  return code;
 }
